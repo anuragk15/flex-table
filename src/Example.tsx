@@ -1,4 +1,4 @@
-import { DataTable } from "./components/table";
+import { DataTable, handleSortDirection } from "./components/table";
 import { ColumnDef } from "@tanstack/react-table";
 
 // Sample Data
@@ -32,6 +32,25 @@ export const users = [
   },
 ];
 
+const CustomSortCell = ({ value, sortDirection }: { value: string; sortDirection: 'none' | 'asc' | 'dsc' }) => {
+  return (
+    <div>
+      <span>{value}</span>
+      {sortDirection !== 'none' && (
+        <span style={{ marginLeft: "8px" }}>
+          {sortDirection === "asc" ? (
+          "asc"
+          ) : (
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          )}
+        </span>
+      )}
+    </div>
+  );
+};
+
 // Column Configuration
 const columns: ColumnDef<any>[] = [
   {
@@ -46,8 +65,8 @@ const columns: ColumnDef<any>[] = [
   },
   {
     accessorKey: "age",
-    header: "Age",
-    cell: (row:any) => row.getValue(),
+    header: (props)=> <CustomSortCell sortDirection={handleSortDirection(props)} value={'Age'} />,
+    cell: (row:any) =>row.getValue()
   },
   {
     accessorKey: "isAccepted",
@@ -99,9 +118,6 @@ export default function ExampleUsage() {
         enableSortingForRows={true}
         showPagination={true}
         enableMultiSelect
-        onSortChange={()=>{
-
-        }}
         PrevButton={<button>hello</button>}
         SearchComponent={<input
           type="text" 

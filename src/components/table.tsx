@@ -8,13 +8,14 @@ import {
   useReactTable,
   SortingState,
   OnChangeFn,
+  HeaderContext,
 } from "@tanstack/react-table";
 
 interface DataTableProps<T extends Record<string, unknown>> {
   data: T[];
   columns: ColumnDef<T, any>[];
   enableSearch?: boolean;
-  onSortChange?: (data:SortingState) => void;
+  onSortChange?: (data: SortingState) => void;
   SearchComponent?: React.ReactElement;
   enableSortingForRows?: boolean;
   showPagination?: boolean;
@@ -27,9 +28,23 @@ interface DataTableProps<T extends Record<string, unknown>> {
   onPaginationChange?: (pageIndex: number, pageSize: number) => void;
   sortableColumns?: string[]; // string of column IDs
   searchableColumns?: string[]; // string of column IDs
-  onSearch?:(query:string) =>T[]
+  onSearch?: (query: string) => T[];
+  styles?: {
+    alternativeRow?: React.CSSProperties; // Styles for alternative rows
+    onRowHover?: React.CSSProperties; // Styles for rows on hover
+    row?: React.CSSProperties; // Default row styles
+    selectedRow?: React.CSSProperties; // Styles for selected rows
+  };
+  classNames?: {
+    alternativeRow?: React.CSSProperties; // Class names for alternative rows
+    onRowHover?: React.CSSProperties; // Class names for rows on hover
+    row?: React.CSSProperties; // Default row Class names
+    selectedRow?: React.CSSProperties; // Class names for selected rows
+  };
 }
-
+export function handleSortDirection(props: HeaderContext<any, unknown>){
+  return props.column?.getIsSorted ? (props.column.getIsSorted() == 'asc' ?'asc' :'dsc') : 'none'
+}
 export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
@@ -47,16 +62,18 @@ export function DataTable<T extends Record<string, unknown>>({
   onPaginationChange,
   onSearch,
   sortableColumns = [],
-  searchableColumns=[]
+  searchableColumns = [],
+  styles = {},
+  classNames = {},
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [rowSelection, setRowSelection] = useState({});
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
 
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
     const newSortingState = updater as SortingState;
-
     if (onSortChange) {
       onSortChange(newSortingState);
     } else {
@@ -65,8 +82,8 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   const filteredData = useMemo(() => {
-    if(onSearch){
-     return onSearch(searchQuery);
+    if (onSearch) {
+      return onSearch(searchQuery);
     }
     if (!searchQuery) return data;
 
@@ -74,7 +91,9 @@ export function DataTable<T extends Record<string, unknown>>({
       Object.entries(row).some(([key, value]) => {
         // Apply search only on columns that are in the searchableColumns array
         if (searchableColumns.length === 0 || searchableColumns.includes(key)) {
-          return String(value).toLowerCase().includes(searchQuery.toLowerCase());
+          return String(value)
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase());
         }
         return false;
       })
@@ -86,7 +105,6 @@ export function DataTable<T extends Record<string, unknown>>({
     columns: useMemo(
       () =>
         [
-         
           enableMultiSelect
             ? {
                 id: "select",
@@ -108,11 +126,26 @@ export function DataTable<T extends Record<string, unknown>>({
               }
             : null,
           ...columns,
-        ].filter(Boolean).map((column) => ({
-          ...column,
-          // Enable sorting only if the column ID is in the sortableColumns array
-          enableSorting: sortableColumns.includes(column?.id || ""),
-        })) as ColumnDef<T, any>[],
+        ]
+          .filter(Boolean)
+          .map((column) => ({
+            ...column,
+            cell: (props: any) => {
+              // Check if it's a custom cell
+              const { column: { id, getIsSorted } } = props;
+              const sortDirection = getIsSorted() === "asc" ? "asc" : getIsSorted() === "desc" ? "dsc" : "none";
+    
+              return flexRender(column?.cell, {
+                ...props,
+                sortDirection, // Pass sort direction to custom cell
+              });
+            },
+            // Enable sorting only if the column ID is in the sortableColumns array
+            enableSorting:
+              sortableColumns?.length > 0
+                ? sortableColumns.includes(column?.id || "")
+                : true,
+          })) as ColumnDef<T, any>[],
       [columns, enableMultiSelect]
     ),
     getCoreRowModel: getCoreRowModel(),
@@ -123,7 +156,7 @@ export function DataTable<T extends Record<string, unknown>>({
       sorting,
       rowSelection,
     },
- 
+
     enableRowSelection: enableMultiSelect,
     onRowSelectionChange: setRowSelection,
     manualPagination: onPaginationChange ? true : false, // Using manual pagination if custom pagination logic is used
@@ -141,9 +174,16 @@ export function DataTable<T extends Record<string, unknown>>({
 
   useEffect(() => {
     if (onPaginationChange) {
-      onPaginationChange(table.getState().pagination.pageIndex, numberOfRowsPerPage);
+      onPaginationChange(
+        table.getState().pagination.pageIndex,
+        numberOfRowsPerPage
+      );
     }
-  }, [table.getState().pagination.pageIndex, numberOfRowsPerPage, onPaginationChange]);
+  }, [
+    table.getState().pagination.pageIndex,
+    numberOfRowsPerPage,
+    onPaginationChange,
+  ]);
 
   return (
     <div>
@@ -192,7 +232,8 @@ export function DataTable<T extends Record<string, unknown>>({
                 >
                   {flexRender(
                     header.column.columnDef.header,
-                    header.getContext()
+                    header.getContext(),
+                    
                   )}
 
                   {enableSortingForRows && (
@@ -242,30 +283,38 @@ export function DataTable<T extends Record<string, unknown>>({
         <tbody>
           {table.getRowModel().rows.map((row, index) => (
             <tr
+              className={`
+              ${classNames.row} 
+              ${index % 2 === 0 ? classNames.alternativeRow : ""} 
+                 ${row.getIsSelected() ? classNames.selectedRow : ""} 
+              ${hoveredRowIndex === index ? classNames.onRowHover : ""}
+            `}
               key={row.id || index}
-              style={{ borderBottom: ".1px solid #e0e0e0" }}
-              onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)} // Toggle expand on click
+              onMouseEnter={() => setHoveredRowIndex(index)}
+              onMouseLeave={() => setHoveredRowIndex(null)}
+              style={{
+                ...styles.row, // Apply row styles
+                ...(row.getIsSelected() ? styles.selectedRow : {}),
+                ...(index % 2 === 0 ? styles.alternativeRow : {}), // Apply alternative row styles for even rows
+                ...(hoveredRowIndex === index ? styles.onRowHover : {}), // Apply hover styles when row is hovered
+              }}
+              onClick={() =>
+                setExpandedRow(expandedRow === row.id ? null : row.id)
+              } // Toggle expand on click
             >
               <React.Fragment key={row.id || index}>
-              <tr
-                key={row.id || index}
-                style={{ borderBottom: ".1px solid #e0e0e0" }}
-                onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)} // Toggle expand on click
-              >
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} style={{ padding: "10px" }}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
-              </tr>
-              {expandedRow === row.id && expandableRowChild && (
-                <tr>
-                  <td colSpan={columns.length}>
-                    {expandableRowChild(row.original)} {/* Render custom child */}
+
+                {expandedRow === row.id && expandableRowChild && (
+                  <td>
+                    {expandableRowChild(row.original)}
                   </td>
-                </tr>
-              )}
-            </React.Fragment>
+                )}
+              </React.Fragment>
             </tr>
           ))}
         </tbody>
