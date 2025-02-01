@@ -1,8 +1,0 @@
-{
-  "components": [
-    "src/components/button.tsx",
-     "src/components/table.tsx"
-  ],
-  "projectId": "2sMWgQKe1DSnU662OxUmUXwjTCS",
-  "projectName": "cli comp"
-}

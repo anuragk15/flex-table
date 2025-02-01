@@ -85,28 +85,7 @@ const columns: ColumnDef<any>[] = [
   }
 ];
 
-// define sort based on Columns def --> showSort
-//for filtering define which columns to be defined --> showFilter
-// change styling based on row selection
 
-// Requirements //
-
-// searchable x,y,z fields based on some def
-   // 3 variants for the searchable icon --> start with hidden(none prop) 'asc', 'dsc'
-// (later) filtering  a,b,c, headers based on some def
-  //
- 
-// sort  a,b,c, headers based on some def
-// multiselect rows
-// styling for selected rows
-// styled for hover rows, not individual cells
-// alternate color styling for rows
-// expandable row which accepts custom child --> pass data for the row in this custom child
-// pagination
-// numberOfRows per page
-// handleSortingRange (if they wanna customise it and use their backend)
-// onPaginationChange
-// 
 
 export default function ExampleUsage() {
 
@@ -121,7 +100,7 @@ export default function ExampleUsage() {
         showPagination={true}
         enableMultiSelect
         onSortChange={()=>{
-          
+
         }}
         PrevButton={<button>hello</button>}
         SearchComponent={<input

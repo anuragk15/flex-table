@@ -1,4 +1,4 @@
-import React, { useState, useMemo, SetStateAction, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   ColumnDef,
   flexRender,
@@ -14,11 +14,7 @@ interface DataTableProps<T extends Record<string, unknown>> {
   data: T[];
   columns: ColumnDef<T, any>[];
   enableSearch?: boolean;
-  onSortChange?: ()=>void;
-  // SearchComponent?: React.ComponentType<{
-  //   value: string;
-  //   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  // }>;
+  onSortChange?: (data:SortingState) => void;
   SearchComponent?: React.ReactElement;
   enableSortingForRows?: boolean;
   showPagination?: boolean;
@@ -26,6 +22,12 @@ interface DataTableProps<T extends Record<string, unknown>> {
   onSelectionChange?: (rows: T[]) => void;
   NextButton?: React.ReactElement;
   PrevButton?: React.ReactElement;
+  expandableRowChild?: (data: T) => React.ReactNode;
+  numberOfRowsPerPage?: number;
+  onPaginationChange?: (pageIndex: number, pageSize: number) => void;
+  sortableColumns?: string[]; // string of column IDs
+  searchableColumns?: string[]; // string of column IDs
+  onSearch?:(query:string) =>T[]
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -40,34 +42,51 @@ export function DataTable<T extends Record<string, unknown>>({
   NextButton,
   onSortChange,
   PrevButton,
+  expandableRowChild,
+  numberOfRowsPerPage = 10, // default value for rows per page
+  onPaginationChange,
+  onSearch,
+  sortableColumns = [],
+  searchableColumns=[]
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [rowSelection, setRowSelection] = useState({});
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
-    // override this function if you intend
-   if(onSortChange){
-    //send column id, direction
-    onSortChange()
-   }
-    else setSorting(updater as SetStateAction<SortingState>);
+    const newSortingState = updater as SortingState;
+
+    if (onSortChange) {
+      onSortChange(newSortingState);
+    } else {
+      setSorting(newSortingState);
+    }
   };
 
   const filteredData = useMemo(() => {
+    if(onSearch){
+     return onSearch(searchQuery);
+    }
     if (!searchQuery) return data;
+
     return data.filter((row) =>
-      Object.values(row).some((value) =>
-        String(value).toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      Object.entries(row).some(([key, value]) => {
+        // Apply search only on columns that are in the searchableColumns array
+        if (searchableColumns.length === 0 || searchableColumns.includes(key)) {
+          return String(value).toLowerCase().includes(searchQuery.toLowerCase());
+        }
+        return false;
+      })
     );
-  }, [data, searchQuery]);
+  }, [data, searchQuery, searchableColumns]);
 
   const table = useReactTable({
     data: filteredData,
     columns: useMemo(
       () =>
         [
+         
           enableMultiSelect
             ? {
                 id: "select",
@@ -89,7 +108,11 @@ export function DataTable<T extends Record<string, unknown>>({
               }
             : null,
           ...columns,
-        ].filter(Boolean) as ColumnDef<T, any>[],
+        ].filter(Boolean).map((column) => ({
+          ...column,
+          // Enable sorting only if the column ID is in the sortableColumns array
+          enableSorting: sortableColumns.includes(column?.id || ""),
+        })) as ColumnDef<T, any>[],
       [columns, enableMultiSelect]
     ),
     getCoreRowModel: getCoreRowModel(),
@@ -100,8 +123,11 @@ export function DataTable<T extends Record<string, unknown>>({
       sorting,
       rowSelection,
     },
+ 
     enableRowSelection: enableMultiSelect,
     onRowSelectionChange: setRowSelection,
+    manualPagination: onPaginationChange ? true : false, // Using manual pagination if custom pagination logic is used
+    pageCount: Math.ceil(filteredData.length / numberOfRowsPerPage), // Calculate total page count
   });
 
   useEffect(() => {
@@ -112,6 +138,12 @@ export function DataTable<T extends Record<string, unknown>>({
       onSelectionChange(selectedRows);
     }
   }, [rowSelection, onSelectionChange, table]);
+
+  useEffect(() => {
+    if (onPaginationChange) {
+      onPaginationChange(table.getState().pagination.pageIndex, numberOfRowsPerPage);
+    }
+  }, [table.getState().pagination.pageIndex, numberOfRowsPerPage, onPaginationChange]);
 
   return (
     <div>
@@ -212,12 +244,28 @@ export function DataTable<T extends Record<string, unknown>>({
             <tr
               key={row.id || index}
               style={{ borderBottom: ".1px solid #e0e0e0" }}
+              onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)} // Toggle expand on click
             >
-              {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} style={{ padding: "10px" }}>
-                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                </td>
-              ))}
+              <React.Fragment key={row.id || index}>
+              <tr
+                key={row.id || index}
+                style={{ borderBottom: ".1px solid #e0e0e0" }}
+                onClick={() => setExpandedRow(expandedRow === row.id ? null : row.id)} // Toggle expand on click
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td key={cell.id} style={{ padding: "10px" }}>
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+              {expandedRow === row.id && expandableRowChild && (
+                <tr>
+                  <td colSpan={columns.length}>
+                    {expandableRowChild(row.original)} {/* Render custom child */}
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
             </tr>
           ))}
         </tbody>

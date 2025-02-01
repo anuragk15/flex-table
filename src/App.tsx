@@ -1,4 +1,4 @@
-import ExampleUsage from "./example";
+import ExampleUsage from './Example'
 
 export default function App() {
   return (
@@ -7,3 +7,5 @@ export default function App() {
     </div>
   );
 }
+
+
