@@ -46,6 +46,7 @@ export interface DataTableProps<T extends Record<string, unknown>> {
     selectedRow?: string; // Class names for selected rows
     expandedRow?: string;
   };
+  checkboxComponent?: React.ReactElement;
 }
 
 export interface PaginationProps {
@@ -76,6 +77,7 @@ export function DataTable<T extends Record<string, unknown>>({
   headlineComponent,
   classNames = {},
   paginationComponent,
+  checkboxComponent,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -118,20 +120,32 @@ export function DataTable<T extends Record<string, unknown>>({
           enableMultiSelect
             ? {
                 id: "select",
-                header: ({ table }: any) => (
-                  <input
-                    type="checkbox"
-                    checked={table.getIsAllRowsSelected()}
-                    onChange={table.getToggleAllRowsSelectedHandler()}
-                  />
-                ),
-                cell: ({ row }: any) => (
-                  <input
-                    type="checkbox"
-                    checked={row.getIsSelected()}
-                    onChange={row.getToggleSelectedHandler()}
-                  />
-                ),
+                header: ({ table }: any) =>
+                  checkboxComponent ? (
+                    React.cloneElement(checkboxComponent, {
+                      checked: table.getIsAllRowsSelected(),
+                      onChange: table.getToggleAllRowsSelectedHandler(),
+                    })
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={table.getIsAllRowsSelected()}
+                      onChange={table.getToggleAllRowsSelectedHandler()}
+                    />
+                  ),
+                cell: ({ row }: any) =>
+                  checkboxComponent ? (
+                    React.cloneElement(checkboxComponent, {
+                      checked: table.getIsAllRowsSelected(),
+                      onChange: table.getToggleAllRowsSelectedHandler(),
+                    })
+                  ) : (
+                    <input
+                      type="checkbox"
+                      checked={row.getIsSelected()}
+                      onChange={row.getToggleSelectedHandler()}
+                    />
+                  ),
                 size: 40,
               }
             : null,

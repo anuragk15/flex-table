@@ -1,164 +1,138 @@
 
+# DataTable Component
 
-# FlexTable 
-
-A highly customizable, responsive, and feature-rich table component for React. This component leverages the power of **TanStack Table** for handling sorting, pagination, multi-selection, and custom row rendering, among other features. It's designed to be flexible and reusable across your projects.
+The `DataTable` component is a highly customizable React table designed to handle data display with features like sorting, pagination, search functionality, and multi-select rows. It is built using `@tanstack/react-table` and includes flexibility to adjust the design, add custom components, and integrate with other UI elements.
 
 ## Features
 
-- **Sorting**: Supports column-wise sorting with customizable icons.
-- **Searchable Fields**: Filter rows based on search query, with the option to use a custom search component.
-- **Pagination**: Built-in pagination with customizable page size.
-- **Multi-Select Rows**: Select multiple rows using checkboxes.
-- **Custom Row Expansion**: Allow expandable rows that accept custom children.
-- **Styling Options**: 
-  - Hover row styling
-  - Alternate row coloring
-  - Customizable selected row styling
-- **Customizable Buttons**: Includes customizable Next/Previous buttons for pagination.
-- **Flexible Configurations**: Easily toggle features like sorting, pagination, multi-selection, and search.
+- **Sorting**: Columns can be sortable, with custom sorting logic.
+- **Pagination**: Supports both automatic and manual pagination.
+- **Search**: Filter the table data based on search queries.
+- **Multi-Select**: Allows multiple rows to be selected at once.
+- **Expandable Rows**: Enables expanding rows for detailed view.
+- **Customizable**: Supports custom components for pagination, sorting, and search functionality.
+- **Styling**: Provides options for custom row styles, hover effects, and class names.
 
 ## Installation
 
 ```bash
-npm install https://github.com/anuragk15/flex-table
-```
-
-or
-
-```bash
-yarn add https://github.com/anuragk15/flex-table
+npm install @tanstack/react-table clsx
 ```
 
 ## Usage
 
+### Basic Example
+
 ```tsx
-import React from 'react';
-import { DataTable } from '@your-username/data-table';
+import React from "react";
+import { DataTable } from "./DataTable"; // Path to your DataTable component
 
 const columns = [
-  { accessor: 'name', header: 'Name' },
-  { accessor: 'age', header: 'Age' },
-  { accessor: 'location', header: 'Location' },
+  { accessorKey: 'id', header: 'ID' },
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'age', header: 'Age' },
 ];
 
 const data = [
-  { name: 'John', age: 25, location: 'New York' },
-  { name: 'Jane', age: 30, location: 'Los Angeles' },
-  { name: 'Doe', age: 22, location: 'Chicago' },
+  { id: 1, name: 'Alice', age: 24 },
+  { id: 2, name: 'Bob', age: 30 },
+  { id: 3, name: 'Charlie', age: 28 },
 ];
 
-const MyTable = () => {
+export default function App() {
   return (
     <DataTable
       data={data}
       columns={columns}
       enableSearch={true}
+      showPagination={true}
       enableSortingForRows={true}
-      showPagination={true}
-      enableMultiSelect={true}
-      NextButton={<button>Next</button>}
-      PrevButton={<button>Previous</button>}
-      onSortChange={(columnId, direction) => {
-        console.log(`Sorted by ${columnId} in ${direction} direction`);
-      }}
-      onSelectionChange={(selectedRows) => {
-        console.log('Selected rows:', selectedRows);
-      }}
     />
   );
-};
+}
 ```
 
-### Props
 
-| Prop                        | Type                                               | Default Value | Description |
-| --------------------------- | -------------------------------------------------- | ------------- | ----------- |
-| `data`                      | `Array<T>`                                         | -             | The data to be displayed in the table |
-| `columns`                   | `Array<ColumnDef<T>>`                              | -             | The column definitions |
-| `enableSearch`              | `boolean`                                          | `false`       | Whether to enable the search functionality |
-| `SearchComponent`           | `React.ReactElement`                               | -             | A custom search component to use |
-| `enableSortingForRows`      | `boolean`                                          | `false`       | Whether to enable sorting functionality |
-| `showPagination`            | `boolean`                                          | `true`        | Whether to show pagination controls |
-| `enableMultiSelect`         | `boolean`                                          | `false`       | Whether to enable multi-row selection |
-| `onSelectionChange`         | `(rows: T[]) => void`                              | -             | Callback fired when the selected rows change |
-| `NextButton`                | `React.ReactElement`                               | -             | Custom Next button for pagination |
-| `PrevButton`                | `React.ReactElement`                               | -             | Custom Previous button for pagination |
-| `onSortChange`              | `(columnId: string, direction: 'asc' | 'desc') => void` | -             | Callback fired when sorting changes |
+#### DataTable Props API
 
-## Styling
+| **API Name**              | **Required** | **Supported Values**                                                                                                    | **Description**                                                                                                  |
+|---------------------------|--------------|------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| `data`                    | Yes          | `T[]` (Array of data objects, where `T` is a generic type extending `Record<string, unknown>`)                           | The array of data to be displayed in the table. Each item represents a row in the table.                        |
+| `columns`                 | Yes          | `ColumnDef<T, any>[]` (Array of column definitions)                                                                     | Defines the columns for the table, including headers, accessor keys, and optional features like sorting.        |
+| `enableSearch`            | No           | `boolean` (Enable or disable the search bar)                                                                             | Toggles the visibility of a search bar for filtering the data in the table.                                      |
+| `searchComponent`         | No           | `React.ReactElement` (Custom search component to use)                                                                   | Allows you to specify a custom search component instead of the default one.                                      |
+| `enableSortingForRows`    | No           | `boolean` (Enable or disable sorting for rows)                                                                          | Controls whether rows can be sorted based on column values.                                                     |
+| `showPagination`          | No           | `boolean` (Enable or disable pagination)                                                                                | Controls whether pagination controls are visible, enabling multiple pages for large datasets.                  |
+| `enableMultiSelect`       | No           | `boolean` (Enable or disable multi-row selection)                                                                       | Allows users to select multiple rows at once.                                                                   |
+| `onSelectionChange`       | No           | `(rows: T[]) => void` (Callback for when row selection changes)                                                          | Callback function triggered when the selected rows change.                                                      |
+| `nextButton`              | No           | `React.ReactElement` (Custom next button)                                                                                | Allows you to customize the "Next" pagination button.                                                           |
+| `onSortChange`            | No           | `(data: SortingState) => void` (Callback for when sorting changes)                                                      | Callback function triggered when sorting order or column changes.                                               |
+| `prevButton`              | No           | `React.ReactElement` (Custom previous button)                                                                            | Allows you to customize the "Previous" pagination button.                                                       |
+| `expandableRowChild`      | No           | `(data: T) => React.ReactNode` (Callback function to render expandable row child)                                         | Renders a custom expandable row when a row is expanded.                                                         |
+| `numberOfRowsPerPage`     | No           | `number` (Number of rows to display per page) Default: `10`                                                              | Defines the number of rows shown on each page of the table when pagination is enabled.                          |
+| `onPaginationChange`      | No           | `(pageIndex: number, pageSize: number) => void` (Callback for pagination changes)                                        | Callback function triggered when the user changes the page or page size.                                        |
+| `sortableColumns`         | No           | `string[]` (Array of column IDs that should be sortable)                                                                | Specifies which columns can be sorted by the user.                                                             |
+| `searchableColumns`       | No           | `string[]` (Array of column IDs that should be searchable)                                                              | Specifies which columns should be searchable by the user.                                                      |
+| `onSearch`                | No           | `(query: string) => T[]` (Custom search function)                                                                        | Custom search function to handle search logic and return filtered data.                                         |
+| `styles`                  | No           | `{ alternativeRow?: React.CSSProperties, onRowHover?: React.CSSProperties, row?: React.CSSProperties, selectedRow?: React.CSSProperties, expandedRow?: React.CSSProperties }` | Allows you to customize the CSS styles for various rows and elements in the table.                              |
+| `classNames`              | No           | `{ alternativeRow?: string, onRowHover?: string, row?: string, selectedRow?: string, expandedRow?: string }`          | Allows you to customize the CSS class names for various rows and elements in the table.                        |
+| `headlineComponent`       | No           | `React.ReactElement`                                         | Specifies a custom component to be displayed as a headline above the table.                                     |
+| `checkboxComponent`       | No           | `React.ReactElement`                                         | Specifies a custom component to be displayed for row selection
 
-- The component supports hover row styling, alternate row coloring, and custom row selection styling through inline styles. You can easily customize these by passing custom styles or by overriding them with CSS classes.
+| `paginationComponent`     | No           | `(data: PaginationProps) => JSX.Element` (Custom pagination component)                                                  | Allows you to specify a custom pagination component instead of the default one.                                |
 
-### Styling Example
+#### PaginationProps
 
-```tsx
-const MyTable = () => {
-  return (
-    <DataTable
-      data={data}
-      columns={columns}
-      showPagination={true}
-      enableSearch={true}
-      style={{
-        '--hover-color': '#f5f5f5',
-        '--selected-row-color': '#d3d3d3',
-      }}
-    />
-  );
-};
-```
+- **`pageCount`** (`number`): Total number of pages.
+- **`currentPage`** (`number`): The current page index.
+- **`onPageChange`** (`(page: number) => void`): Callback to handle page change.
 
 ## Customization
 
-### Search Component
+You can customize several aspects of the table:
 
-You can customize the search bar by passing a custom component for the `SearchComponent` prop.
+### Search
+
+To enable a custom search input, pass a custom `searchComponent`:
 
 ```tsx
 <DataTable
   data={data}
   columns={columns}
   enableSearch={true}
-  SearchComponent={<CustomSearchComponent />}
-  onSearchChange={(query) => console.log(query)}
+  searchComponent={<CustomSearchComponent />}
 />
 ```
 
-### Sorting Icons
+### Sorting
 
-You can provide your own sorting icons or keep the default ones. 
+You can control which columns are sortable using the `sortableColumns` prop:
 
 ```tsx
 <DataTable
   data={data}
   columns={columns}
-  enableSortingForRows={true}
-  sortingIcons={{
-    asc: <CustomAscIcon />,
-    desc: <CustomDescIcon />,
-  }}
+  sortableColumns={['name', 'age']}
 />
 ```
 
-### Custom Pagination Buttons
+### Pagination
 
-If you prefer to use your own pagination buttons, you can pass custom elements for the `PrevButton` and `NextButton` props.
+You can provide custom pagination buttons or use the default pagination controls:
 
 ```tsx
 <DataTable
   data={data}
   columns={columns}
   showPagination={true}
-  PrevButton={<CustomPrevButton />}
-  NextButton={<CustomNextButton />}
+  prevButton={<CustomPrevButton />}
+  nextButton={<CustomNextButton />}
 />
 ```
 
-## Contributions
-
-We welcome contributions! If you have ideas or bug fixes, feel free to open an issue or submit a pull request.
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT
+```
+
+This README provides a clean and concise description of the `DataTable` component, including installation, usage examples, available props, and customization options. You can add more details based on your project requirements.
