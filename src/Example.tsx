@@ -1,50 +1,106 @@
+import ComplexPagination from "./components/complexPagination";
 import { DataTable, handleSortDirection } from "./components/table";
 import { ColumnDef } from "@tanstack/react-table";
 
 // Sample Data
 export const users = [
-  { 
-    id: 1, 
-    name: "John Doe", 
+  {
+    id: 1,
+    name: "John Doe",
     age: 28,
     isAccepted: true,
-    groups: ['admin', 'developers'],
-    lastLogin: '2024-03-20',
-    status: 'available'
+    groups: ["admin", "developers"],
+    lastLogin: "2024-03-20",
+    status: "available",
   },
-  { 
-    id: 2, 
-    name: "Jane Smith", 
+  {
+    id: 2,
+    name: "Jane Smith",
     age: 34,
     isAccepted: true,
-    groups: ['moderator'],
-    lastLogin: '2024-03-19',
-    status: 'busy'
+    groups: ["moderator"],
+    lastLogin: "2024-03-19",
+    status: "busy",
   },
-  { 
-    id: 3, 
-    name: "Alice Johnson", 
+  {
+    id: 3,
+    name: "Alice Johnson",
     age: 22,
     isAccepted: false,
-    groups: ['guest'],
-    lastLogin: '2024-03-15',
-    status: 'offline'
+    groups: ["guest"],
+    lastLogin: "2024-03-15",
+    status: "offline",
+  },
+  {
+    id: 4,
+    name: "Michael Brown",
+    age: 40,
+    isAccepted: true,
+    groups: ["admin", "support"],
+    lastLogin: "2024-03-18",
+    status: "available",
+  },
+  {
+    id: 5,
+    name: "Emily Davis",
+    age: 27,
+    isAccepted: false,
+    groups: ["developer"],
+    lastLogin: "2024-03-10",
+    status: "offline",
+  },
+  {
+    id: 6,
+    name: "Chris Wilson",
+    age: 29,
+    isAccepted: true,
+    groups: ["moderator", "support"],
+    lastLogin: "2024-03-21",
+    status: "busy",
+  },
+  {
+    id: 7,
+    name: "Jessica Taylor",
+    age: 31,
+    isAccepted: true,
+    groups: ["guest", "members"],
+    lastLogin: "2024-03-22",
+    status: "available",
+  },
+  {
+    id: 8,
+    name: "David Martinez",
+    age: 38,
+    isAccepted: false,
+    groups: ["administrators"],
+    lastLogin: "2024-03-16",
+    status: "offline",
   },
 ];
 
-const CustomSortCell = ({ value, sortDirection }: { value: string; sortDirection: 'none' | 'asc' | 'dsc' }) => {
+const CustomSortCell = ({
+  value,
+  sortDirection,
+}: {
+  value: string;
+  sortDirection: "none" | "asc" | "dsc";
+}) => {
   return (
-    <div>
-      <span>{value}</span>
-      {sortDirection !== 'none' && (
+    <div
+      style={{
+        minWidth: "70px",
+      }}
+    >
+      <span
+        style={{
+          fontWeight: 200,
+        }}
+      >
+        {value}
+      </span>
+      {sortDirection !== "none" && (
         <span style={{ marginLeft: "8px" }}>
-          {sortDirection === "asc" ? (
-          "asc"
-          ) : (
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-          )}
+          {sortDirection === "asc" ? "asc" : "dsc"}
         </span>
       )}
     </div>
@@ -56,22 +112,27 @@ const columns: ColumnDef<any>[] = [
   {
     accessorKey: "id",
     header: "ID",
-    cell: (row:any) => row.getValue(),
+    cell: (row: any) => row.getValue(),
   },
   {
     accessorKey: "name",
     header: "Name",
-    cell: (row:any) => <div>{row.getValue()}</div> ,
+    cell: (row: any) => <div>{row.getValue()}</div>,
   },
   {
     accessorKey: "age",
-    header: (props)=> <CustomSortCell sortDirection={handleSortDirection(props)} value={'Age'} />,
-    cell: (row:any) =>row.getValue()
+    header: (props) => (
+      <CustomSortCell
+        sortDirection={handleSortDirection(props)}
+        value={"Age"}
+      />
+    ),
+    cell: (row: any) => row.getValue(),
   },
   {
     accessorKey: "isAccepted",
     header: "Accepted",
-    cell: (row:any) => (
+    cell: (row: any) => (
       <div
         style={{
           padding: "4px 8px",
@@ -80,7 +141,7 @@ const columns: ColumnDef<any>[] = [
           color: row.getValue() ? "#1e7e34" : "#d32f2f",
           display: "inline-block",
           fontSize: "14px",
-          fontWeight: 500
+          fontWeight: 500,
         }}
       >
         {row.getValue() ? "Yes" : "No"}
@@ -90,25 +151,21 @@ const columns: ColumnDef<any>[] = [
   {
     accessorKey: "groups",
     header: "Groups",
-    cell: (row:any) => (row.getValue() as string[]).join(", "),
+    cell: (row: any) => (row.getValue() as string[]).join(", "),
   },
   {
     accessorKey: "lastLogin",
     header: "Last Login",
-    cell: (row:any) => row.getValue(),
+    cell: (row: any) => row.getValue(),
   },
   {
     accessorKey: "status",
     header: "Status",
-    cell: (row:any) => row.getValue(),
-  }
+    cell: (row: any) => row.getValue(),
+  },
 ];
 
-
-
 export default function ExampleUsage() {
-
- 
   return (
     <div style={{ padding: "20px" }}>
       <DataTable
@@ -118,24 +175,48 @@ export default function ExampleUsage() {
         enableSortingForRows={true}
         showPagination={true}
         enableMultiSelect
-        PrevButton={<button>hello</button>}
-        SearchComponent={<input
-          type="text" 
-          placeholder="Custom search..."
-          style={{
-            width: "100%",
-            padding: "8px 12px",
-            fontSize: "14px",
-            border: "1px solid #ddd",
-            borderRadius: "6px",
-            outline: "none",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-          }}
-        />}
+        paginationComponent={({ onPageChange, pageCount, currentPage }) => {
+          return (
+            <ComplexPagination
+              onPageChange={onPageChange}
+              pageCount={pageCount}
+              currentPage={currentPage}
+            />
+          );
+        }}
+        expandableRowChild={(data) => {
+          console.log(data);
+          return (
+            <div
+              style={{
+                width: "100%",
+                textAlign: "center",
+              }}
+            >
+              My name is {data.name}
+            </div>
+          );
+        }}
+        numberOfRowsPerPage={2}
+      
+        headlineComponent={<div>hello</div>}
+        searchComponent={
+          <input
+            type="text"
+            placeholder="Custom search..."
+            style={{
+              padding: "8px 12px",
+              fontSize: "14px",
+              display: "flex",
+              justifySelf: "flex-end",
+              border: "1px solid #ddd",
+              borderRadius: "6px",
+              outline: "none",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            }}
+          />
+        }
       />
     </div>
   );
 }
-
-
-

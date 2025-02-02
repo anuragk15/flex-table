@@ -10,19 +10,22 @@ import {
   OnChangeFn,
   HeaderContext,
 } from "@tanstack/react-table";
+import clsx from "clsx";
 
-interface DataTableProps<T extends Record<string, unknown>> {
+export interface DataTableProps<T extends Record<string, unknown>> {
   data: T[];
   columns: ColumnDef<T, any>[];
   enableSearch?: boolean;
   onSortChange?: (data: SortingState) => void;
-  SearchComponent?: React.ReactElement;
+  searchComponent?: React.ReactElement;
   enableSortingForRows?: boolean;
   showPagination?: boolean;
   enableMultiSelect?: boolean;
   onSelectionChange?: (rows: T[]) => void;
-  NextButton?: React.ReactElement;
-  PrevButton?: React.ReactElement;
+  nextButton?: React.ReactElement;
+  headlineComponent?: React.ReactElement;
+  prevButton?: React.ReactElement;
+  paginationComponent?: (data: PaginationProps) => JSX.Element;
   expandableRowChild?: (data: T) => React.ReactNode;
   numberOfRowsPerPage?: number;
   onPaginationChange?: (pageIndex: number, pageSize: number) => void;
@@ -33,30 +36,36 @@ interface DataTableProps<T extends Record<string, unknown>> {
     alternativeRow?: React.CSSProperties; // Styles for alternative rows
     onRowHover?: React.CSSProperties; // Styles for rows on hover
     row?: React.CSSProperties; // Default row styles
-    selectedRow?: React.CSSProperties; // Styles for selected rows
+    selectedRow?: React.CSSProperties; // Styles for selected rows,
+    expandedRow?: React.CSSProperties;
   };
   classNames?: {
-    alternativeRow?: React.CSSProperties; // Class names for alternative rows
-    onRowHover?: React.CSSProperties; // Class names for rows on hover
-    row?: React.CSSProperties; // Default row Class names
-    selectedRow?: React.CSSProperties; // Class names for selected rows
+    alternativeRow?: string; // Class names for alternative rows
+    onRowHover?: string; // Class names for rows on hover
+    row?: string; // Default row Class names
+    selectedRow?: string; // Class names for selected rows
+    expandedRow?: string;
   };
 }
-export function handleSortDirection(props: HeaderContext<any, unknown>){
-  return props.column?.getIsSorted ? (props.column.getIsSorted() == 'asc' ?'asc' :'dsc') : 'none'
+
+export interface PaginationProps {
+  pageCount: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
 }
+
 export function DataTable<T extends Record<string, unknown>>({
   data,
   columns,
   enableSearch = false,
-  SearchComponent,
+  searchComponent,
   enableSortingForRows = false,
-  showPagination = true,
+  showPagination = false,
   enableMultiSelect = false,
   onSelectionChange,
-  NextButton,
+  nextButton,
   onSortChange,
-  PrevButton,
+  prevButton,
   expandableRowChild,
   numberOfRowsPerPage = 10, // default value for rows per page
   onPaginationChange,
@@ -64,7 +73,9 @@ export function DataTable<T extends Record<string, unknown>>({
   sortableColumns = [],
   searchableColumns = [],
   styles = {},
+  headlineComponent,
   classNames = {},
+  paginationComponent,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -82,11 +93,10 @@ export function DataTable<T extends Record<string, unknown>>({
   };
 
   const filteredData = useMemo(() => {
+    if (!searchQuery) return data;
     if (onSearch) {
       return onSearch(searchQuery);
     }
-    if (!searchQuery) return data;
-
     return data.filter((row) =>
       Object.entries(row).some(([key, value]) => {
         // Apply search only on columns that are in the searchableColumns array
@@ -128,24 +138,16 @@ export function DataTable<T extends Record<string, unknown>>({
           ...columns,
         ]
           .filter(Boolean)
-          .map((column) => ({
-            ...column,
-            cell: (props: any) => {
-              // Check if it's a custom cell
-              const { column: { id, getIsSorted } } = props;
-              const sortDirection = getIsSorted() === "asc" ? "asc" : getIsSorted() === "desc" ? "dsc" : "none";
-    
-              return flexRender(column?.cell, {
-                ...props,
-                sortDirection, // Pass sort direction to custom cell
-              });
-            },
-            // Enable sorting only if the column ID is in the sortableColumns array
-            enableSorting:
-              sortableColumns?.length > 0
-                ? sortableColumns.includes(column?.id || "")
-                : true,
-          })) as ColumnDef<T, any>[],
+          .map((column: any) => {
+            return {
+              ...column,
+              // Enable sorting only if the column ID is in the sortableColumns array
+              enableSorting:
+                sortableColumns?.length > 0
+                  ? sortableColumns.includes(column?.accessorKey || "")
+                  : true,
+            };
+          }) as ColumnDef<T, any>[],
       [columns, enableMultiSelect]
     ),
     getCoreRowModel: getCoreRowModel(),
@@ -159,8 +161,11 @@ export function DataTable<T extends Record<string, unknown>>({
 
     enableRowSelection: enableMultiSelect,
     onRowSelectionChange: setRowSelection,
-    manualPagination: onPaginationChange ? true : false, // Using manual pagination if custom pagination logic is used
-    pageCount: Math.ceil(filteredData.length / numberOfRowsPerPage), // Calculate total page count
+
+    pageCount: onPaginationChange
+      ? Math.ceil(filteredData.length / numberOfRowsPerPage)
+      : undefined, // Only required if manual pagination is used
+    manualPagination: !!onPaginationChange, // Using manual pagination if custom pagination logic is used
   });
 
   useEffect(() => {
@@ -184,139 +189,191 @@ export function DataTable<T extends Record<string, unknown>>({
     numberOfRowsPerPage,
     onPaginationChange,
   ]);
+  useEffect(() => {
+    table.setPageSize(numberOfRowsPerPage);
+  }, [numberOfRowsPerPage, table]);
 
   return (
     <div>
-      {/* Search Bar */}
-      {enableSearch && (
-        <div style={{ marginBottom: "12px" }}>
-          {React.isValidElement(SearchComponent) ? (
-            <div>
-              {React.cloneElement(SearchComponent as any, {
-                value: searchQuery,
-                onChange: (e: any) => setSearchQuery(e.target.value),
-              })}
-            </div>
-          ) : (
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: "30%",
-                padding: "8px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-              }}
-            />
-          )}
-        </div>
-      )}
+      <div
+        style={{
+          display: "flex",
+          gap: "8px",
+          width: "100%",
+          alignItems: "center",
+        }}
+      >
+        {headlineComponent ? headlineComponent : null}
+        {/* Search Bar */}
+        {enableSearch && (
+          <div style={{ flex: 1 }}>
+            {React.isValidElement(searchComponent) ? (
+              <div>
+                {React.cloneElement(searchComponent as any, {
+                  value: searchQuery,
+                  onChange: (e: any) => setSearchQuery(e.target.value),
+                })}
+              </div>
+            ) : (
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "30%",
+                  padding: "8px",
+                  border: "1px solid #ccc",
+                  borderRadius: "4px",
+                }}
+              />
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Table */}
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <table style={{ width: "100%" }}>
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} style={{}}>
-              {headerGroup.headers.map((header) => (
-                <th
-                  key={header.id}
-                  style={{
-                    padding: "10px",
-                    textAlign: "left",
-                    cursor: "pointer",
-                    borderBottom: ".4px solid #e0e0e0",
-                  }}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  {flexRender(
-                    header.column.columnDef.header,
-                    header.getContext(),
-                    
-                  )}
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map((header) => {
+                const sortDirection = header.column.getIsSorted() || "none";
+                const isSortable =
+                  sortableColumns.length > 0
+                    ? sortableColumns.includes(header.id)
+                    : true;
+                // Get the original header content
+                let headerContent =
+                  typeof header.column.columnDef.header === "function"
+                    ? header.column.columnDef.header({
+                        column: header.column,
+                        header: header,
+                        table: table,
+                      })
+                    : header.column.columnDef.header;
 
-                  {enableSortingForRows && (
-                    <span
-                      style={{
-                        marginLeft: "8px",
-                        display: "inline-block",
-                        width: "12px",
-                        height: "12px",
-                      }}
-                    >
-                      {header.column.getIsSorted() === "asc" && (
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="black"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                return (
+                  <th
+                    key={header.id}
+                    onClick={
+                      isSortable
+                        ? header.column.getToggleSortingHandler()
+                        : undefined
+                    }
+                    style={{
+                      padding: "10px",
+                      textAlign: "left",
+                      cursor: isSortable ? "pointer" : "default",
+                      borderBottom: ".4px solid #e0e0e0",
+                    }}
+                  >
+                    {React.isValidElement(headerContent) &&
+                    typeof headerContent.type !== "string"
+                      ? React.cloneElement(
+                          headerContent as React.ReactElement<{
+                            sortDirection: string;
+                          }>,
+                          { sortDirection }
+                        )
+                      : headerContent}
+
+                    {/* Sorting Arrows (Only if no custom header) */}
+                    {!React.isValidElement(headerContent) &&
+                      enableSortingForRows && (
+                        <span
+                          style={{
+                            marginLeft: "8px",
+                            display: "inline-block",
+                            width: "12px",
+                            height: "12px",
+                          }}
                         >
-                          <polyline points="18 15 12 9 6 15"></polyline>
-                        </svg>
+                          {header.column.getIsSorted() === "asc" && (
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="black"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="18 15 12 9 6 15"></polyline>
+                            </svg>
+                          )}
+                          {header.column.getIsSorted() === "desc" && (
+                            <svg
+                              width="12"
+                              height="12"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="black"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                          )}
+                        </span>
                       )}
-                      {header.column.getIsSorted() === "desc" && (
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="black"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
-                      )}
-                    </span>
-                  )}
-                </th>
-              ))}
+                  </th>
+                );
+              })}
             </tr>
           ))}
         </thead>
         <tbody>
-          {table.getRowModel().rows.map((row, index) => (
-            <tr
-              className={`
-              ${classNames.row} 
-              ${index % 2 === 0 ? classNames.alternativeRow : ""} 
-                 ${row.getIsSelected() ? classNames.selectedRow : ""} 
-              ${hoveredRowIndex === index ? classNames.onRowHover : ""}
-            `}
-              key={row.id || index}
-              onMouseEnter={() => setHoveredRowIndex(index)}
-              onMouseLeave={() => setHoveredRowIndex(null)}
-              style={{
-                ...styles.row, // Apply row styles
-                ...(row.getIsSelected() ? styles.selectedRow : {}),
-                ...(index % 2 === 0 ? styles.alternativeRow : {}), // Apply alternative row styles for even rows
-                ...(hoveredRowIndex === index ? styles.onRowHover : {}), // Apply hover styles when row is hovered
-              }}
-              onClick={() =>
-                setExpandedRow(expandedRow === row.id ? null : row.id)
-              } // Toggle expand on click
-            >
+          {table.getRowModel().rows.map((row, index) => {
+            return (
               <React.Fragment key={row.id || index}>
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} style={{ padding: "10px" }}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                <tr
+                  className={clsx(
+                    classNames.row,
+                    index % 2 === 0 && classNames.alternativeRow,
+                    row.getIsSelected() && classNames.selectedRow,
+                    hoveredRowIndex === index && classNames.onRowHover,
+                    expandedRow == row.id && classNames.expandedRow
+                  )}
+                  key={row.id || index}
+                  onMouseEnter={() => setHoveredRowIndex(index)}
+                  onMouseLeave={() => setHoveredRowIndex(null)}
+                  style={{
+                    cursor: expandableRowChild ? "pointer" : "default",
+                    ...styles.row, // Apply row styles
+                    ...(row.getIsSelected() ? styles.selectedRow : {}),
+                    ...(index % 2 === 0 ? styles.alternativeRow : {}), // Apply alternative row styles for even rows
+                    ...(hoveredRowIndex === index ? styles.onRowHover : {}), // Apply hover styles when row is hovered
+                    ...(expandedRow == row.id ? styles.expandedRow : {}),
+                  }}
+                  onClick={() =>
+                    setExpandedRow(expandedRow === row.id ? null : row.id)
+                  } // Toggle expand on click
+                >
+                  <React.Fragment key={row.id || index}>
+                    {row.getVisibleCells().map((cell) => (
+                      <td key={cell.id} style={{ padding: "10px" }}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </React.Fragment>
+                </tr>
 
                 {expandedRow === row.id && expandableRowChild && (
-                  <td>
-                    {expandableRowChild(row.original)}
-                  </td>
+                  <tr className={row.id + Date.now()}>
+                    <td colSpan={columns.length + 1} style={{ width: "100%" }}>
+                      {expandableRowChild(row.original)}
+                    </td>
+                  </tr>
                 )}
               </React.Fragment>
-            </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
 
@@ -331,16 +388,16 @@ export function DataTable<T extends Record<string, unknown>>({
             gap: "8px",
           }}
         >
-          {PrevButton ? (
-            React.isValidElement(PrevButton) ? (
-              React.cloneElement(PrevButton as any, {
+          {prevButton ? (
+            React.isValidElement(prevButton) ? (
+              React.cloneElement(prevButton as any, {
                 onClick: () => table.previousPage(),
                 disabled: !table.getCanPreviousPage(),
               })
             ) : (
-              PrevButton
+              prevButton
             )
-          ) : (
+          ) : paginationComponent ? null : (
             <button
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
@@ -357,58 +414,32 @@ export function DataTable<T extends Record<string, unknown>>({
             </button>
           )}
 
-          <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-            {Array.from({ length: table.getPageCount() }, (_, i) => {
-              const pageIndex = i;
-              const isCurrent =
-                pageIndex === table.getState().pagination.pageIndex;
-              const isNearCurrent =
-                Math.abs(pageIndex - table.getState().pagination.pageIndex) <=
-                1;
-              const isFirstOrLast =
-                pageIndex === 0 || pageIndex === table.getPageCount() - 1;
-
-              if (isNearCurrent || isFirstOrLast) {
-                return (
-                  <button
-                    key={pageIndex}
-                    onClick={() => table.setPageIndex(pageIndex)}
-                    style={{
-                      padding: "8px 14px",
-                      border: "none",
-                      borderRadius: "6px",
-                      backgroundColor: isCurrent ? "#f0f0f0" : "transparent",
-                      cursor: "pointer",
-                      minWidth: "36px",
-                      color: isCurrent ? "#333" : "#666",
-                    }}
-                  >
-                    {pageIndex + 1}
-                  </button>
-                );
-              } else if (
-                (pageIndex === 1 &&
-                  table.getState().pagination.pageIndex > 2) ||
-                (pageIndex === table.getPageCount() - 2 &&
-                  table.getState().pagination.pageIndex <
-                    table.getPageCount() - 3)
-              ) {
-                return <span key={pageIndex}>...</span>;
-              }
-              return null;
-            })}
+          <div style={{ display: "flex", flex: 1, alignItems: "center" }}>
+            {paginationComponent ? (
+              paginationComponent({
+                pageCount: table.getPageCount(),
+                onPageChange: (pageIndex) => table.setPageIndex(pageIndex),
+                currentPage: table.getState().pagination.pageIndex,
+              })
+            ) : (
+              <BasicPagination
+                pageCount={table.getPageCount()}
+                onPageChange={(pageIndex) => table.setPageIndex(pageIndex)}
+                currentPage={table.getState().pagination.pageIndex}
+              />
+            )}
           </div>
 
-          {NextButton ? (
-            React.isValidElement(NextButton) ? (
-              React.cloneElement(NextButton as any, {
+          {nextButton ? (
+            React.isValidElement(nextButton) ? (
+              React.cloneElement(nextButton as any, {
                 onClick: () => table.nextPage(),
                 disabled: !table.getCanNextPage(),
               })
             ) : (
-              NextButton
+              nextButton
             )
-          ) : (
+          ) : paginationComponent ? null : (
             <button
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
@@ -428,4 +459,55 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
     </div>
   );
+}
+
+const BasicPagination: React.FC<PaginationProps> = ({
+  pageCount,
+  currentPage,
+  onPageChange,
+}) => {
+  return (
+    <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
+      {Array.from({ length: pageCount }, (_, i) => {
+        const pageIndex = i;
+        const isCurrent = pageIndex === currentPage;
+        const isNearCurrent = Math.abs(pageIndex - currentPage) <= 1;
+        const isFirstOrLast = pageIndex === 0 || pageIndex === pageCount - 1;
+
+        if (isNearCurrent || isFirstOrLast) {
+          return (
+            <button
+              key={pageIndex}
+              onClick={() => onPageChange(pageIndex)}
+              style={{
+                padding: "8px 14px",
+                border: "none",
+                borderRadius: "6px",
+                backgroundColor: isCurrent ? "#f0f0f0" : "transparent",
+                cursor: "pointer",
+                minWidth: "36px",
+                color: isCurrent ? "#333" : "#666",
+              }}
+            >
+              {pageIndex + 1}
+            </button>
+          );
+        } else if (
+          (pageIndex === 1 && currentPage > 2) ||
+          (pageIndex === pageCount - 2 && currentPage < pageCount - 3)
+        ) {
+          return <span key={pageIndex}>...</span>;
+        }
+        return null;
+      })}
+    </div>
+  );
+};
+
+export function handleSortDirection(props: HeaderContext<any, unknown>) {
+  return props.column?.getIsSorted
+    ? props.column.getIsSorted() == "asc"
+      ? "asc"
+      : "dsc"
+    : "none";
 }
