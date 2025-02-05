@@ -84,7 +84,10 @@ export function DataTable<T extends Record<string, unknown>>({
   const [rowSelection, setRowSelection] = useState({});
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [hoveredRowIndex, setHoveredRowIndex] = useState<number | null>(null);
-
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(""); // Debounced value
+  const searchableKeys = useMemo(() => searchableColumns, searchableColumns); // Memoized for performance
+ 
+  
   const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
     const newSortingState = updater as SortingState;
     if (onSortChange) {
@@ -94,23 +97,33 @@ export function DataTable<T extends Record<string, unknown>>({
     }
   };
 
+  // 🕒 Debounce Effect (Updates debouncedSearchQuery after 300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300); // Adjust debounce delay as needed
+
+    return () => clearTimeout(handler); // Cleanup timeout on unmount or re-run
+  }, [searchQuery]);
+
   const filteredData = useMemo(() => {
-    if (!searchQuery) return data;
+    if (!debouncedSearchQuery) return data;
     if (onSearch) {
-      return onSearch(searchQuery);
+      return onSearch(debouncedSearchQuery);
     }
-    return data.filter((row) =>
-      Object.entries(row).some(([key, value]) => {
-        // Apply search only on columns that are in the searchableColumns array
+
+    return data.filter((row) => {
+    
+      return Object.entries(row).some(([key, value]) => {
         if (searchableColumns.length === 0 || searchableColumns.includes(key)) {
           return String(value)
             .toLowerCase()
-            .includes(searchQuery.toLowerCase());
+            .includes(debouncedSearchQuery.toLowerCase());
         }
         return false;
-      })
-    );
-  }, [data, searchQuery, searchableColumns]);
+      });
+    });
+  }, [data, debouncedSearchQuery, searchableKeys]);
 
   const table = useReactTable({
     data: filteredData,
@@ -225,7 +238,9 @@ export function DataTable<T extends Record<string, unknown>>({
               <div>
                 {React.cloneElement(searchComponent as any, {
                   value: searchQuery,
-                  onChange: (e: any) => setSearchQuery(e.target.value),
+                  onChange: (e: any) => {
+                    setSearchQuery(e.target.value);
+                  },
                 })}
               </div>
             ) : (

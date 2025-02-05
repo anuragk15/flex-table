@@ -112,7 +112,7 @@ const columns: ColumnDef<any>[] = [
   {
     accessorKey: "id",
     header: "ID",
-    cell: (row: any) => row.getValue(),
+    cell: (row: any) => row.getValue()
   },
   {
     accessorKey: "name",
@@ -175,15 +175,7 @@ export default function ExampleUsage() {
         enableSortingForRows={true}
         showPagination={true}
         enableMultiSelect
-        paginationComponent={({ onPageChange, pageCount, currentPage }) => {
-          return (
-            <ComplexPagination
-              onPageChange={onPageChange}
-              pageCount={pageCount}
-              currentPage={currentPage}
-            />
-          );
-        }}
+     
         expandableRowChild={(data) => {
           console.log(data);
           return (
@@ -197,9 +189,8 @@ export default function ExampleUsage() {
             </div>
           );
         }}
-        numberOfRowsPerPage={2}
-      
-        headlineComponent={<div>hello</div>}
+        numberOfRowsPerPage={6}
+        headlineComponent={<h1>Locofy table</h1>}
         searchComponent={
           <input
             type="text"

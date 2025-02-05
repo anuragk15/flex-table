@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 locofy.config.json
 requirements.md
+
+override.env
+override.txt
